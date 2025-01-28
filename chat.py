@@ -46,8 +46,14 @@ class Chat:
     def add_alert_message(self, message: str) -> Message:
         return self._append(Message().with_app_role().with_content(f"⚠️ {message}"))
 
-    def add_response_message(self, response: str) -> Message:
-        return self._append(Message().with_assistant_role().with_content(response))
+    def add_response_message(self, response, error: Exception | None = None) -> None:
+        message = Message().with_assistant_role().with_content(response)
+        if error is not None:
+            message = message.with_content(
+                f"{response}: {str(error if error is not None else 'Unknown error')}"
+            ).with_error_severity()
+        self._history.append(message)
+        return message
 
     def messages(self) -> list[Message]:
         return self._history

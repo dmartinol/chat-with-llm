@@ -37,29 +37,47 @@ if prompt := st.chat_input("What is up? (type /h for help)", key="_chat_input"):
             st.markdown(prompt)
 
         st.session_state._chat.add_user_message(prompt)
-        stream = st.session_state._chatbot.send_user_request(prompt)
+        try:
+            stream = st.session_state._chatbot.send_user_request(prompt)
+            if stream is None:
+                message = st.session_state._chat.add_alert_message(connection_alert)
+                with st.chat_message(message.role):
+                    st.markdown(message.content)
+            else:
+                with st.chat_message("assistant"):
+                    response = st.write_stream(stream)
+                    logger.debug(f"response is {response}")
+                    response_message = st.session_state._chatbot.add_response(response)
+                    st.session_state._chat.add_response_message(response)
+        except Exception as error:
+            st.session_state._chatbot.add_response(
+                response="Cannot interact with LLM", error=error
+            )
+            st.session_state._chat.add_response_message(
+                response="Cannot interact with LLM", error=error
+            )
+            st.rerun()
 
-        if stream is None:
-            message = st.session_state._chat.add_alert_message(connection_alert)
-            with st.chat_message(message.role):
-                st.markdown(message.content)
-        else:
-            with st.chat_message("assistant"):
-                response = st.write_stream(stream)
-                logger.debug(f"response is {response}")
-                st.session_state._chatbot.add_response(response)
-                st.session_state._chat.add_response_message(response)
 
 with st.sidebar:
     try:
         llm_model = st.session_state._chatbot.connected_model()
-        st.success(f"Connected to server {st.session_state._chatbot.host}.", icon="✅")
-        with st.expander("Server details"):
-            st.markdown(f"**LLM model**: {llm_model}")
-            st.markdown(f"**Temperature**: {st.session_state._chatbot.temperature}")
-            st.markdown(f"**System prompt**: {st.session_state._chatbot.system_prompt}")
+        if llm_model is not None:
+            with st.expander(
+                f"✅ Connected to LLM at {st.session_state._chatbot.host}."
+            ):
+                st.markdown(f"**LLM model**: {llm_model}")
+                st.markdown(f"**Temperature**: {st.session_state._chatbot.temperature}")
+                st.markdown(
+                    f"**System prompt**: {st.session_state._chatbot.system_prompt}"
+                )
+        else:
+            st.error("Please configure a valid LLM server host", icon="⚠️")
     except Exception as error:
-        st.error(f"Please configure a valid LLM server host: {str(error)}", icon="⚠️")
+        st.error(
+            f"Cannot fetch LLM details from {st.session_state._chatbot.host}: `{str(error)}`",
+            icon="⚠️",
+        )
 
     cols = st.columns([5, 1, 1])
     with cols[0]:

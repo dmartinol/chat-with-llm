@@ -58,7 +58,7 @@ class ChatBot:
         self._history.append(message)
         logger.debug(f"history: {[m.dict for m in self._history]}")
 
-        if self._client is None or self.connected_model() is None:
+        if self._client is None:
             return None
 
         create_params = {}
@@ -70,8 +70,14 @@ class ChatBot:
             **create_params,
         )
 
-    def add_response(self, response) -> None:
-        self._history.append(Message().with_assistant_role().with_content(response))
+    def add_response(self, response, error: Exception | None = None) -> None:
+        message = Message().with_assistant_role().with_content(response)
+        if error is not None:
+            message = message.with_content(
+                f"{response}: {str(error if error is not None else 'Unknown error')}"
+            ).with_error_severity()
+        self._history.append(message)
+        return message
 
     def clear(self) -> None:
         self._history.clear()
