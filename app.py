@@ -1,0 +1,104 @@
+import logging
+
+import streamlit as st
+
+from chat import Chat
+from chatbot import ChatBot
+from defaults import connection_alert, title, welcome
+from handlers import get_handler
+
+logger = logging.getLogger(__name__)
+
+
+st.set_page_config(initial_sidebar_state="collapsed")
+st.title(title)
+
+
+if "_chatbot" not in st.session_state:
+    st.session_state._chatbot = ChatBot()
+if "_chat" not in st.session_state:
+    st.session_state._chat = Chat()
+    st.session_state._chat.add_welcome_message(welcome)
+
+
+for message in st.session_state._chat._history:
+    with st.chat_message(message.role):
+        content = message.content
+        st.markdown(content)
+
+if prompt := st.chat_input("What is up? (type /h for help)", key="_chat_input"):
+    prompt = prompt.strip()
+    handler = get_handler(prompt)
+    if handler is not None:
+        handler(prompt)
+        st.rerun()
+    else:
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        st.session_state._chat.add_user_message(prompt)
+        stream = st.session_state._chatbot.send_user_request(prompt)
+
+        if stream is None:
+            message = st.session_state._chat.add_alert_message(connection_alert)
+            with st.chat_message(message.role):
+                st.markdown(message.content)
+        else:
+            with st.chat_message("assistant"):
+                response = st.write_stream(stream)
+                logger.debug(f"response is {response}")
+                st.session_state._chatbot.add_response(response)
+                st.session_state._chat.add_response_message(response)
+
+with st.sidebar:
+    try:
+        llm_model = st.session_state._chatbot.connected_model()
+        st.success(f"Connected to server {st.session_state._chatbot.host}.", icon="✅")
+        with st.expander("Server details"):
+            st.markdown(f"**LLM model**: {llm_model}")
+            st.markdown(f"**Temperature**: {st.session_state._chatbot.temperature}")
+            st.markdown(f"**System prompt**: {st.session_state._chatbot.system_prompt}")
+    except Exception as error:
+        st.error(f"Please configure a valid LLM server host: {str(error)}", icon="⚠️")
+
+    cols = st.columns([5, 1, 1])
+    with cols[0]:
+        st.markdown("**Message History**")
+    with cols[2]:
+        if st.button(
+            "",
+            type="tertiary",
+            key="del-all",
+            icon=":material/delete:",
+            help="Delete all items from history",
+        ):
+            st.session_state._chat.delete_history()
+            st.rerun()
+    for idx, message in enumerate(st.session_state._chat.history_messages()):
+        cols = st.columns([5, 1, 1])
+        with cols[0]:
+            truncated = message.content.strip()
+            if len(truncated) > 30:
+                truncated = f"{truncated[:30]}..."
+            st.write(truncated)
+        with cols[1]:
+            if st.button(
+                "",
+                type="tertiary",
+                key=f"copy-{idx}",
+                icon=":material/content_copy:",
+                help="Copy text to clipboard",
+            ):
+                import clipboard
+
+                clipboard.copy(message.content)
+        with cols[2]:
+            if st.button(
+                "",
+                type="tertiary",
+                key=f"del-{idx}",
+                icon=":material/delete:",
+                help="Delete item from history",
+            ):
+                st.session_state._chat.delete_from_history(message)
+                st.rerun()

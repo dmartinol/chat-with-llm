@@ -1,0 +1,7 @@
+openai
+streamlit
+clipboard
+ruff
+mypy
+pytest
+isort
