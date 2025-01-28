@@ -36,7 +36,7 @@ class ChatBot:
     def set_system_prompt(self, system_prompt) -> None:
         self._system_prompt = system_prompt
         self._history = [m for m in self._history if not m.is_system_role()]
-        self._history.append(Message().with_system_role().with_content(system_prompt))
+        self.append(Message.from_system_prompt(system_prompt))
 
     @property
     def system_prompt(self) -> str:
@@ -54,8 +54,8 @@ class ChatBot:
             logger.warning("Removing latest user message to avoid duplications")
             self._history.pop()
 
-        message = Message().with_user_role().with_content(request)
-        self._history.append(message)
+        message = Message.from_user_message(request)
+        self.append(message)
         logger.debug(f"history: {[m.dict for m in self._history]}")
 
         if self._client is None:
@@ -70,12 +70,7 @@ class ChatBot:
             **create_params,
         )
 
-    def add_response(self, response, error: Exception | None = None) -> None:
-        message = Message().with_assistant_role().with_content(response)
-        if error is not None:
-            message = message.with_content(
-                f"{response}: {str(error if error is not None else 'Unknown error')}"
-            ).with_error_severity()
+    def append(self, message: Message) -> Message:
         self._history.append(message)
         return message
 

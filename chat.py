@@ -17,43 +17,12 @@ class Chat:
     def __init__(self):
         self._history: list[Message] = []
 
-    def _append(self, message: Message) -> Message:
+    def append(self, message: Message) -> Message:
         self._history.append(message)
         return message
 
-    def add_command(
-        self, command: str, response: str, error: Exception | None = None
-    ) -> Message:
-        self._append(Message().with_user_role().with_content(command))
-        if error is not None:
-            error_message = (
-                f"⚠️ {response}: {str(error if error is not None else 'Unknown error')}"
-            )
-            return self._append(
-                Message()
-                .with_app_role()
-                .with_content(error_message)
-                .with_error_severity()
-            )
-        return self._append(Message().with_app_role().with_content(response))
-
-    def add_welcome_message(self, message: str) -> Message:
-        return self._append(Message().with_app_role().with_content(message))
-
-    def add_user_message(self, message: str) -> Message:
-        return self._append(Message().with_user_role().with_content(message))
-
-    def add_alert_message(self, message: str) -> Message:
-        return self._append(Message().with_app_role().with_content(f"⚠️ {message}"))
-
-    def add_response_message(self, response, error: Exception | None = None) -> None:
-        message = Message().with_assistant_role().with_content(response)
-        if error is not None:
-            message = message.with_content(
-                f"{response}: {str(error if error is not None else 'Unknown error')}"
-            ).with_error_severity()
-        self._history.append(message)
-        return message
+    def append_all(self, messages: list[Message]):
+        self._history.extend(messages)
 
     def messages(self) -> list[Message]:
         return self._history

@@ -6,6 +6,7 @@ from chat import Chat
 from chatbot import ChatBot
 from defaults import connection_alert, title, welcome
 from handlers import get_handler
+from message import Message
 
 logger = logging.getLogger(__name__)
 
@@ -18,13 +19,12 @@ if "_chatbot" not in st.session_state:
     st.session_state._chatbot = ChatBot()
 if "_chat" not in st.session_state:
     st.session_state._chat = Chat()
-    st.session_state._chat.add_welcome_message(welcome)
+    st.session_state._chat.append(Message.from_app_message(welcome))
 
 
 for message in st.session_state._chat._history:
     with st.chat_message(message.role):
-        content = message.content
-        st.markdown(content)
+        st.markdown(message.to_markdown())
 
 if prompt := st.chat_input("What is up? (type /h for help)", key="_chat_input"):
     prompt = prompt.strip()
@@ -35,27 +35,30 @@ if prompt := st.chat_input("What is up? (type /h for help)", key="_chat_input"):
     else:
         with st.chat_message("user"):
             st.markdown(prompt)
-
-        st.session_state._chat.add_user_message(prompt)
+        st.session_state._chat.append(Message.from_user_message(prompt))
         try:
             stream = st.session_state._chatbot.send_user_request(prompt)
             if stream is None:
-                message = st.session_state._chat.add_alert_message(connection_alert)
+                message = st.session_state._chat.append(
+                    Message()
+                    .from_app_message(f"{connection_alert}")
+                    .with_warning_severity()
+                )
                 with st.chat_message(message.role):
-                    st.markdown(message.content)
+                    st.markdown(message.to_markdown())
             else:
                 with st.chat_message("assistant"):
                     response = st.write_stream(stream)
                     logger.debug(f"response is {response}")
-                    response_message = st.session_state._chatbot.add_response(response)
-                    st.session_state._chat.add_response_message(response)
+                    response_message = Message.from_response(response=response)
+                    st.session_state._chatbot.append(response_message)
+                    st.session_state._chat.append(response_message)
         except Exception as error:
-            st.session_state._chatbot.add_response(
+            error_message = Message.from_response(
                 response="Cannot interact with LLM", error=error
             )
-            st.session_state._chat.add_response_message(
-                response="Cannot interact with LLM", error=error
-            )
+            st.session_state._chatbot.append(error_message)
+            st.session_state._chat.append(error_message)
             st.rerun()
 
 
