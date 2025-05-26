@@ -13,7 +13,7 @@ test: lint
 	# pytest .
 
 run-app:
-	streamlit run app.py
+	streamlit run --logger.level info --server.runOnSave true app.py
 
 help: ## Show this help
 	@echo "Available targets:"

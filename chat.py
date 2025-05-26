@@ -2,7 +2,7 @@ import logging
 
 from message import Message
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("chatbot")
 _help_message = """
             Help / TL;DR
             - /c <host>: Connect OpenAI-compliant server host

@@ -1,4 +1,5 @@
 import logging
+import sys
 
 import streamlit as st
 
@@ -8,7 +9,16 @@ from defaults import connection_alert, title, welcome
 from handlers import get_handler
 from message import Message
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("chatbot")
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(logging.INFO)
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
 
 
 st.set_page_config(initial_sidebar_state="collapsed")
@@ -26,7 +36,7 @@ for message in st.session_state._chat._history:
     with st.chat_message(message.role):
         st.markdown(message.to_markdown())
 
-if prompt := st.chat_input("What is up? (type /h for help)", key="_chat_input"):
+if prompt := st.chat_input("What's up? (type /h for help)", key="_chat_input"):
     prompt = prompt.strip()
     handler = get_handler(prompt)
     if handler is not None:
@@ -49,11 +59,12 @@ if prompt := st.chat_input("What is up? (type /h for help)", key="_chat_input"):
             else:
                 with st.chat_message("assistant"):
                     response = st.write_stream(stream)
-                    logger.debug(f"response is {response}")
+                    logger.info(f"response is {response}")
                     response_message = Message.from_response(response=response)
                     st.session_state._chatbot.append(response_message)
                     st.session_state._chat.append(response_message)
         except Exception as error:
+            logger.error("An error occurred while interacting with LLM", exc_info=True)
             error_message = Message.from_response(
                 response="Cannot interact with LLM", error=error
             )

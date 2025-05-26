@@ -1,9 +1,12 @@
+import logging
 from typing import Callable
 
 import streamlit as st
 
 from defaults import help_message, welcome
 from message import Message
+
+logger = logging.getLogger("chatbot")
 
 
 def _help(request: str):
@@ -14,7 +17,7 @@ def _connect_server(request: str):
     if len(request.split(" ")) > 1:
         host = request.split(" ")[1]
         try:
-            st.session_state._chatbot.set_server(host)
+            st.session_state._chatbot.set_host(host)
         except Exception as error:
             st.session_state._chat.append_all(
                 Message.from_command(
@@ -31,6 +34,9 @@ def _connect_server(request: str):
     else:
         try:
             message = f"""
+          
+          Server mode is: **{"Ollama" if st.session_state._chatbot.ollama_enabled else "OpenAI"}**
+
           Server host is: {st.session_state._chatbot.host}
 
           Connected model is: {st.session_state._chatbot.connected_model()}
@@ -39,9 +45,21 @@ def _connect_server(request: str):
         except Exception as error:
             st.session_state._chat.append_all(
                 Message.from_command(
-                    request, response="Cannot fetch server details", error=error
+                    request,
+                    response=f"Cannot fetch server details from {st.session_state._chatbot.host}",
+                    error=error,
                 )
             )
+
+
+def _toggle_ollama(request: str):
+    st.session_state._chatbot.toggle_ollama_support()
+    st.session_state._chat.append_all(
+        Message.from_command(
+            request,
+            f"Ollama support is now **{'enabled' if st.session_state._chatbot.ollama_enabled else 'disabled'}**",
+        )
+    )
 
 
 def _system_prompt(request: str):
@@ -90,6 +108,7 @@ def _reset(request: str):
 
 _handlers: dict[str, Callable[[str], None]] = {
     "/c": _connect_server,
+    "/o": _toggle_ollama,
     "/h": _help,
     "/s": _system_prompt,
     "/t": _temperature,

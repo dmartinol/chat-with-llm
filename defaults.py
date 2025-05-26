@@ -4,6 +4,7 @@ help_message = """
 Help / TL;DR
 - /c <host>: Connect OpenAI-compliant server host
 - /c: Print connected server host
+- /o: To enable/disable Ollama support (default is: disabled)
 - /h: Print this help message
 - /s: Print system prompt
 - /s <prompt>: Initialize system prompt
