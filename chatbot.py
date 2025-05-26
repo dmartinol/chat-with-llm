@@ -32,20 +32,24 @@ class ChatBot:
             self._client = None
             return
 
-        if ":" in self._host:
-            host, port = self._host.split(":")
-        else:
-            host = self._host
-            port = self._default_port
         if self._ollama_enabled:
-            base_url = f"http://{host}:{port}"
+            if "https" in self._host:
+                base_url = self._host
+            else:
+                if ":" in self._host:
+                    host, port = self._host.split(":")
+                else:
+                    host = self._host
+                    port = self._default_port
+                base_url = f"http://{host}:{port}"
             logger.info(f"Building Ollama client with base URL: {base_url}")
             self._client = OllamaClient(host=base_url)
         else:
-            logger.info(f"Building OpenAI client with base URL: {_OPENAI_HOST}")
-            self._client = OpenAI(
-                base_url=_OPENAI_HOST, api_key=os.getenv("OPENAI_API_KEY")
-            )
+            if os.getenv("OPENAI_API_KEY"):
+                logger.info(f"Building OpenAI client with base URL: {_OPENAI_HOST}")
+                self._client = OpenAI(
+                    base_url=_OPENAI_HOST, api_key=os.getenv("OPENAI_API_KEY")
+                )
 
         self._model_name = (
             self._models()[0] if self._ollama_enabled else self._default_model
